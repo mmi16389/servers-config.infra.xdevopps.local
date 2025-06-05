@@ -1,0 +1,101 @@
+Configuration du serveur VPN (OpenVPN)
+
+Fichier typique : /etc/openvpn/server.conf
+
+# Sous-réseau pour les clients VPN
+server 10.8.0.0 255.255.255.0
+
+# Route à pousser aux clients pour accéder au réseau interne de l'entreprise
+push "route 192.168.0.0 255.255.0.0"
+
+# (Optionnel) rediriger tout le trafic via le VPN
+# push "redirect-gateway def1 bypass-dhcp"
+
+# Permet aux clients VPN de communiquer entre eux
+client-to-client
+
+# (Optionnel) DNS
+push "dhcp-option DNS 8.8.8.8"
+
+Activer le routage IP sur le serveur (Linux)
+
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
+Et pour le rendre permanent :
+
+sudo sysctl -w net.ipv4.ip_forward=1
+echo "net.ipv4.ip_forward = 1" | sudo tee -a /etc/sysctl.conf
+
+✅ Routage ou NAT sur le serveur
+
+Les machines du réseau interne (192.168.0.0/16) doivent savoir comment retourner les paquets aux clients VPN (10.8.0.0/24). Il y a deux méthodes :
+✅ Option 1 : Ajouter une route sur les routeurs internes
+
+Sur le(s) routeur(s) de votre réseau :
+
+    Destination : 10.8.0.0/24
+
+    Passerelle : l’IP interne du serveur VPN (ex : 192.168.1.1)
+
+✅ Option 2 : Faire du NAT (masquage) côté serveur VPN
+
+Si vous ne pouvez pas modifier les routeurs internes, vous pouvez masquer le trafic des clients VPN avec iptables :
+
+# Remplacer eth0 par l’interface réseau vers le LAN (par exemple ens33, eno1…)
+iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE
+
+Pour rendre cette règle permanente (Debian/Ubuntu) :
+
+sudo apt install iptables-persistent
+sudo netfilter-persistent save
+
+✅ Configuration du client VPN
+
+Dans le fichier .ovpn du client, assurez-vous que la ligne suivante est bien présente :
+
+pull
+
+Cela permet au client de recevoir les routes envoyées par le serveur (comme 192.168.0.0/16).
+
+Configuration typique :
+
+client
+dev tun
+proto udp
+remote mon.serveur.vpn 1194
+resolv-retry infinite
+nobind
+
+persist-key
+persist-tun
+
+remote-cert-tls server
+
+pull
+
+# (Optionnel) pour rediriger tout le trafic via VPN
+# redirect-gateway def1
+
+<ca>...</ca>
+<cert>...</cert>
+<key>...</key>
+
+🔍 Vérification
+
+    Connectez le client VPN.
+
+    Essayez de pinguer une machine sur le réseau 192.168.x.x.
+
+    Utilisez la commande traceroute pour vérifier que le trafic passe par le tunnel VPN.
+
+    Vérifiez que les réponses sont bien retournées : si ce n’est pas le cas, ajoutez une route ou configurez le NAT.
+
+Souhaitez-vous un exemple complet personnalisé pour votre réseau ? Si vous me donnez :
+
+    L’IP du serveur VPN,
+
+    Le sous-réseau local (ex : 192.168.1.0/24),
+
+    Le nom de l’interface réseau (ex : eth0, ens33),
+
+je peux générer tous les fichiers de configuration pour vous.
