@@ -43,6 +43,10 @@ Si vous ne pouvez pas modifier les routeurs internes, vous pouvez masquer le tra
 
 # Remplacer eth0 par l’interface réseau vers le LAN (par exemple ens33, eno1…)
 iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE
+===> sudo iptables -t nat -A POSTROUTING -s 10.8.0.1/24 -o br_udevopps -j MASQUERADE
+===> 10.8.0.1 : l'addresse ip du vpn
+===> br_udevopps : l'interface du reseau derriere le vpn
+
 
 Pour rendre cette règle permanente (Debian/Ubuntu) :
 
